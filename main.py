@@ -35,15 +35,25 @@ class BoatHandler(webapp2.RequestHandler):
 	def get(self, id=None):
 		if id:
 			boat = ndb.Key(urlsafe=id).get()
-			boat_dict = boat.to_dict()
-			boat_dict['self'] = '/boat/' + id
-			self.response.write(json.dumps(boat_dict))
+			if boat:
+				boat_dict = boat.to_dict()
+				boat_dict['self'] = '/boat/' + id
+				self.response.write(json.dumps(boat_dict))
 		else:
-			all_boats = Boat.query().fetch(20)
+			all_boats = Boat.query().fetch(1000)
 			boats = []
 			for boat in all_boats:
 				boats.append(boat.to_dict())
 			self.response.write(json.dumps(boats))
+
+	def delete(self, id=None):
+		if id:
+			boat = ndb.Key(urlsafe=id).get()
+			boat.key.delete()
+		else:
+			boats = Boat.query().fetch(1000)
+			for boat in boats:
+				boat.key.delete()
 
 allowed_methods = webapp2.WSGIApplication.allowed_methods
 new_allowed_methods = allowed_methods.union(('PATCH',))
