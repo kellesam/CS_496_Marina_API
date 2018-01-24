@@ -1,11 +1,12 @@
 from google.appengine.ext import ndb
 import webapp2
 import json
+import logging
 
 class MainPage(webapp2.RequestHandler):
-    def get(self):
-        self.response.headers['Content-Type'] = 'text/plain'
-        self.response.write('Marina content here')
+	def get(self):
+		self.response.headers['Content-Type'] = 'text/plain'
+		self.response.write('Marina content here')
 
 class Boat(ndb.Model):
 	name = ndb.StringProperty(required = True)
@@ -48,6 +49,19 @@ class BoatHandler(webapp2.RequestHandler):
 			for boat in boats:
 				boat.key.delete()
 
+	def patch(self, id = None):
+		if id:
+			boat = ndb.Key(urlsafe = id).get()
+			if boat:
+				boat_data = json.loads(self.request.body)
+				for k, v in boat_data.items():
+					if getattr(boat, k, "missing") is not "missing":
+						setattr(boat, k, v)
+				boat.put()
+				boat_dict = boat.to_dict()
+				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
+				self.response.write(json.dumps(boat_dict))
+
 class Slip(ndb.Model):
 	number = ndb.IntegerProperty(required = True)
 	current_boat = ndb.IntegerProperty()
@@ -78,14 +92,27 @@ class SlipHandler(webapp2.RequestHandler):
 				slips.append(slip.to_dict())
 			self.response.write(json.dumps(slips))
 
+	def patch(self, id = None):
+		if id:
+			slip = ndb.Key(urlsafe = id).get()
+			if slip:
+				slip_data = json.loads(self.request.body)
+				for k, v in slip_data.items():
+					if getattr(slip, k, "missing") is not "missing":
+						setattr(slip, k, v)
+				slip.put()
+				slip_dict = slip.to_dict()
+				slip_dict['self'] = '/slip/' + slip.key.urlsafe()
+				self.response.write(json.dumps(slip_dict))
+
 allowed_methods = webapp2.WSGIApplication.allowed_methods
 new_allowed_methods = allowed_methods.union(('PATCH',))
 webapp2.WSGIApplication.allowed_methods = new_allowed_methods
 
 app = webapp2.WSGIApplication([
-    ('/', MainPage),
-    ('/boat', BoatHandler),
-    ('/boat/(.*)', BoatHandler),
+	('/', MainPage),
+	('/boat', BoatHandler),
+	('/boat/(.*)', BoatHandler),
 	('/slip', SlipHandler),
 	('/slip/(.*)', SlipHandler)
 ], debug=True)
