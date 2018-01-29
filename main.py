@@ -37,7 +37,9 @@ class BoatHandler(webapp2.RequestHandler):
 			all_boats = Boat.query().fetch(1000)
 			boats = []
 			for boat in all_boats:
-				boats.append(boat.to_dict())
+				boat_dict = boat.to_dict()
+				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
+				boats.append(boat_dict)
 			self.response.write(json.dumps(boats))
 
 	def delete(self, id = None):
@@ -89,8 +91,19 @@ class SlipHandler(webapp2.RequestHandler):
 			all_slips = Slip.query().fetch(1000)
 			slips = []
 			for slip in all_slips:
-				slips.append(slip.to_dict())
+				slip_dict = slip.to_dict()
+				slip_dict['self'] = '/slip/' + slip.key.urlsafe()
+				slips.append(slip_dict)
 			self.response.write(json.dumps(slips))
+
+	def delete(self, id = None):
+		if id:
+			slip = ndb.Key(urlsafe = id).get()
+			slip.key.delete()
+		else:
+			slips = Slip.query().fetch(1000)
+			for slip in slips:
+				slip.key.delete()
 
 	def patch(self, id = None):
 		if id:
