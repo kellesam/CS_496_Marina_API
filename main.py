@@ -56,9 +56,12 @@ class BoatHandler(webapp2.RequestHandler):
 			boat = ndb.Key(urlsafe = id).get()
 			if boat:
 				boat_data = json.loads(self.request.body)
-				for k, v in boat_data.items():
-					if getattr(boat, k, "missing") is not "missing":
-						setattr(boat, k, v)
+				if 'name' in boat_data:
+					boat.name = boat_data['name']
+				if 'type' in boat_data:
+					boat.type = boat_data['type']
+				if 'length' in boat_data:
+					boat.length = boat_data['length']
 				boat.put()
 				boat_dict = boat.to_dict()
 				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
@@ -110,13 +113,17 @@ class SlipHandler(webapp2.RequestHandler):
 			slip = ndb.Key(urlsafe = id).get()
 			if slip:
 				slip_data = json.loads(self.request.body)
-				for k, v in slip_data.items():
-					if getattr(slip, k, "missing") is not "missing":
-						setattr(slip, k, v)
+				if 'number' in slip_data:
+					slip.number = slip_data['number']
 				slip.put()
 				slip_dict = slip.to_dict()
 				slip_dict['self'] = '/slip/' + slip.key.urlsafe()
 				self.response.write(json.dumps(slip_dict))
+
+class DockHandler(webapp2.RequestHandler):
+	def put(self, id = None):
+		if id:
+			self.response.write(id)
 
 allowed_methods = webapp2.WSGIApplication.allowed_methods
 new_allowed_methods = allowed_methods.union(('PATCH',))
@@ -127,5 +134,6 @@ app = webapp2.WSGIApplication([
 	('/boat', BoatHandler),
 	('/boat/(.*)', BoatHandler),
 	('/slip', SlipHandler),
+	('/slip/boat/(.*)', DockHandler),
 	('/slip/(.*)', SlipHandler)
 ], debug=True)
