@@ -1,4 +1,6 @@
 from google.appengine.ext import ndb
+from google.net.proto.ProtocolBuffer import ProtocolBufferDecodeError
+from datetime import datetime
 import webapp2
 import json
 import logging
@@ -73,7 +75,7 @@ class BoatHandler(webapp2.RequestHandler):
 
 class Slip(ndb.Model):
 	number = ndb.IntegerProperty(required = True)
-	current_boat = ndb.IntegerProperty()
+	current_boat = ndb.StringProperty()
 	arrival_date = ndb.StringProperty()
 
 	@classmethod
@@ -126,8 +128,69 @@ class SlipHandler(webapp2.RequestHandler):
 class DockHandler(webapp2.RequestHandler):
 	def put(self, id = None):
 		if id:
-			self.response.write(id)
+			boat = None
+			try:
+				boat = ndb.Key(urlsafe = id).get()
+			except TypeError:
+				self.response.write('Sorry, only string is allowed as urlsafe input')
+			except ProtocolBufferDecodeError:
+				self.response.write('Sorry, the urlsafe string seems to be invalid')
+			if boat and boat.at_sea:
+				open_slip = Slip.query(Slip.current_boat == None).fetch(1)
+				if open_slip:
+					slip = open_slip[0]
+					data = []
 
+					boat.at_sea = False
+					boat.put()
+					boat_dict = boat.to_dict()
+					boat_dict['id'] = boat.key.urlsafe()
+					boat_dict['self'] = '/boat/' + boat.key.urlsafe()
+					data.append(boat_dict)
+
+					slip.current_boat = boat_dict['id']
+					slip.arrival_date = datetime.now().strftime("%m/%d/%Y")
+					slip.put()
+					slip_dict = slip.to_dict()
+					slip_dict['id'] = slip.key.urlsafe()
+					slip_dict['self'] = '/slip/' + slip.key.urlsafe()
+					data.append(slip_dict)
+
+					self.response.write(json.dumps(data))
+				else:
+					self.response.write("No open slips available")
+					self.response.set_status(403)
+
+	def delete(self, id = None):
+		if id:
+			boat = None
+			try:
+				boat = ndb.Key(urlsafe = id).get()
+			except TypeError:
+				self.response.write('Sorry, only string is allowed as urlsafe input')
+			except ProtocolBufferDecodeError:
+				self.response.write('Sorry, the urlsafe string seems to be invalid')
+			if boat and not boat.at_sea:
+				taken_slip = Slip.query(Slip.current_boat == id).fetch(1)
+				slip = taken_slip[0]
+				data = []
+
+				boat.at_sea = True
+				boat.put()
+				boat_dict = boat.to_dict()
+				boat_dict['id'] = boat.key.urlsafe()
+				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
+				data.append(boat_dict)
+
+				slip.current_boat = None
+				slip.arrival_date = None
+				slip.put()
+				slip_dict = slip.to_dict()
+				slip_dict['id'] = slip.key.urlsafe()
+				slip_dict['self'] = '/slip/' + slip.key.urlsafe()
+				data.append(slip_dict)
+
+				self.response.write(json.dumps(data))
 
 allowed_methods = webapp2.WSGIApplication.allowed_methods
 new_allowed_methods = allowed_methods.union(('PATCH',))
