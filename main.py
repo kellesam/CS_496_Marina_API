@@ -23,6 +23,7 @@ class BoatHandler(webapp2.RequestHandler):
 						at_sea = True)
 		new_boat.put()
 		boat_dict = new_boat.to_dict()
+		boat_dict['id'] = new_boat.key.urlsafe()
 		boat_dict['self'] = '/boat/' + new_boat.key.urlsafe()
 		self.response.write(json.dumps(boat_dict))
 
@@ -31,6 +32,7 @@ class BoatHandler(webapp2.RequestHandler):
 			boat = ndb.Key(urlsafe = id).get()
 			if boat:
 				boat_dict = boat.to_dict()
+				boat_dict['id'] = id
 				boat_dict['self'] = '/boat/' + id
 				self.response.write(json.dumps(boat_dict))
 		else:
@@ -38,6 +40,7 @@ class BoatHandler(webapp2.RequestHandler):
 			boats = []
 			for boat in all_boats:
 				boat_dict = boat.to_dict()
+				boat_dict['id'] = boat.key.urlsafe()
 				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
 				boats.append(boat_dict)
 			self.response.write(json.dumps(boats))
@@ -64,6 +67,7 @@ class BoatHandler(webapp2.RequestHandler):
 					boat.length = boat_data['length']
 				boat.put()
 				boat_dict = boat.to_dict()
+				boat_dict['id'] = boat.key.urlsafe()
 				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
 				self.response.write(json.dumps(boat_dict))
 
@@ -72,14 +76,23 @@ class Slip(ndb.Model):
 	current_boat = ndb.IntegerProperty()
 	arrival_date = ndb.StringProperty()
 
+	@classmethod
+	def query_slip(cls):
+		return cls.query().order(-cls.number)
+
 class SlipHandler(webapp2.RequestHandler):
 	def post(self):
-		slip_data = json.loads(self.request.body)
-		new_slip = Slip(number = slip_data['number'],
+		slip_num = 1
+		top_slip = Slip.query_slip().fetch(1)
+		if top_slip:
+			slip_num = top_slip[0].number + 1
+
+		new_slip = Slip(number = slip_num,
 						current_boat = None,
 						arrival_date = None)
 		new_slip.put()
 		slip_dict = new_slip.to_dict()
+		slip_dict['id'] = new_slip.key.urlsafe()
 		slip_dict['self'] = '/slip/' + new_slip.key.urlsafe()
 		self.response.write(json.dumps(slip_dict))
 
@@ -88,6 +101,7 @@ class SlipHandler(webapp2.RequestHandler):
 			slip = ndb.Key(urlsafe = id).get()
 			if slip:
 				slip_dict = slip.to_dict()
+				slip_dict['id'] = id
 				slip_dict['self'] = '/slip/' + id
 				self.response.write(json.dumps(slip_dict))
 		else:
@@ -95,6 +109,7 @@ class SlipHandler(webapp2.RequestHandler):
 			slips = []
 			for slip in all_slips:
 				slip_dict = slip.to_dict()
+				slip_dict['id'] = slip.key.urlsafe()
 				slip_dict['self'] = '/slip/' + slip.key.urlsafe()
 				slips.append(slip_dict)
 			self.response.write(json.dumps(slips))
@@ -108,22 +123,11 @@ class SlipHandler(webapp2.RequestHandler):
 			for slip in slips:
 				slip.key.delete()
 
-	def patch(self, id = None):
-		if id:
-			slip = ndb.Key(urlsafe = id).get()
-			if slip:
-				slip_data = json.loads(self.request.body)
-				if 'number' in slip_data:
-					slip.number = slip_data['number']
-				slip.put()
-				slip_dict = slip.to_dict()
-				slip_dict['self'] = '/slip/' + slip.key.urlsafe()
-				self.response.write(json.dumps(slip_dict))
-
 class DockHandler(webapp2.RequestHandler):
 	def put(self, id = None):
 		if id:
 			self.response.write(id)
+
 
 allowed_methods = webapp2.WSGIApplication.allowed_methods
 new_allowed_methods = allowed_methods.union(('PATCH',))
