@@ -50,10 +50,22 @@ class BoatHandler(webapp2.RequestHandler):
 	def delete(self, id = None):
 		if id:
 			boat = ndb.Key(urlsafe = id).get()
+			if not boat.at_sea:
+				taken_slip = Slip.query(Slip.current_boat == id).fetch(1)
+				slip = taken_slip[0]
+				slip.current_boat = None
+				slip.arrival_date = None
+				slip.put()
 			boat.key.delete()
 		else:
 			boats = Boat.query().fetch(1000)
 			for boat in boats:
+				if not boat.at_sea:
+					taken_slip = Slip.query(Slip.current_boat == id).fetch(1)
+					slip = taken_slip[0]
+					slip.current_boat = None
+					slip.arrival_date = None
+					slip.put()
 				boat.key.delete()
 
 	def patch(self, id = None):
@@ -119,10 +131,18 @@ class SlipHandler(webapp2.RequestHandler):
 	def delete(self, id = None):
 		if id:
 			slip = ndb.Key(urlsafe = id).get()
+			if slip.current_boat:
+				boat = ndb.Key(urlsafe = slip.current_boat).get()
+				boat.at_sea = True
+				boat.put()
 			slip.key.delete()
 		else:
 			slips = Slip.query().fetch(1000)
 			for slip in slips:
+				if slip.current_boat:
+					boat = ndb.Key(urlsafe = slip.current_boat).get()
+					boat.at_sea = True
+					boat.put()
 				slip.key.delete()
 
 class DockHandler(webapp2.RequestHandler):
