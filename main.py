@@ -220,9 +220,11 @@ class DockHandler(webapp2.RequestHandler):
 			except TypeError:
 				self.response.write('Invalid urlsafe string')
 				self.response.set_status(404)
+				return
 			except ProtocolBufferDecodeError:
 				self.response.write('Invalid urlsafe string')
 				self.response.set_status(404)
+				return
 			if boat and boat.at_sea:
 				open_slip = Slip.query(Slip.current_boat == None).fetch(1)
 				if open_slip:
@@ -248,7 +250,7 @@ class DockHandler(webapp2.RequestHandler):
 				else:
 					self.response.write("No open slips available")
 					self.response.set_status(403)
-			if not boat.at_sea:
+			elif not boat.at_sea:
 				self.response.write("Boat is already docked")
 				self.response.set_status(400)
 
@@ -258,9 +260,13 @@ class DockHandler(webapp2.RequestHandler):
 			try:
 				boat = ndb.Key(urlsafe = id).get()
 			except TypeError:
-				self.response.write('Sorry, only string is allowed as urlsafe input')
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+				return
 			except ProtocolBufferDecodeError:
-				self.response.write('Sorry, the urlsafe string seems to be invalid')
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+				return
 			if boat and not boat.at_sea:
 				taken_slip = Slip.query(Slip.current_boat == id).fetch(1)
 				slip = taken_slip[0]
@@ -282,7 +288,7 @@ class DockHandler(webapp2.RequestHandler):
 				data.append(slip_dict)
 
 				self.response.write(json.dumps(data))
-			if boat.at_sea:
+			elif boat.at_sea:
 				self.response.write("Boat is already at sea")
 				self.response.set_status(400)
 
