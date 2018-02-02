@@ -33,7 +33,7 @@ class BoatHandler(webapp2.RequestHandler):
 			boat_dict['id'] = new_boat.key.urlsafe()
 			boat_dict['self'] = '/boat/' + new_boat.key.urlsafe()
 			self.response.write(json.dumps(boat_dict))
-			self.response.set_status(200)
+			self.response.set_status(201)
 
 	def get(self, id = None):
 		if id:
@@ -151,6 +151,7 @@ class SlipHandler(webapp2.RequestHandler):
 		slip_dict['id'] = new_slip.key.urlsafe()
 		slip_dict['self'] = '/slip/' + new_slip.key.urlsafe()
 		self.response.write(json.dumps(slip_dict))
+		self.response.set_status(201)
 
 	def get(self, id = None):
 		if id:
