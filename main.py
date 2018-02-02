@@ -8,7 +8,7 @@ import logging
 class MainPage(webapp2.RequestHandler):
 	def get(self):
 		self.response.headers['Content-Type'] = 'text/plain'
-		self.response.write('Marina content here')
+		self.response.write('Sam Keller - REST Planning and Implementation')
 
 class Boat(ndb.Model):
 	name = ndb.StringProperty(required = True)
@@ -19,24 +19,39 @@ class Boat(ndb.Model):
 class BoatHandler(webapp2.RequestHandler):
 	def post(self):
 		boat_data = json.loads(self.request.body)
-		new_boat = Boat(name = boat_data['name'],
-						type = boat_data['type'],
-						length = boat_data['length'],
-						at_sea = True)
-		new_boat.put()
-		boat_dict = new_boat.to_dict()
-		boat_dict['id'] = new_boat.key.urlsafe()
-		boat_dict['self'] = '/boat/' + new_boat.key.urlsafe()
-		self.response.write(json.dumps(boat_dict))
+
+		if "name" not in boat_data or "type" not in boat_data or "length" not in boat_data:
+			self.response.write("Missing fields in post request")
+			self.response.set_status(400)
+		else:
+			new_boat = Boat(name = boat_data['name'],
+							type = boat_data['type'],
+							length = boat_data['length'],
+							at_sea = True)
+			new_boat.put()
+			boat_dict = new_boat.to_dict()
+			boat_dict['id'] = new_boat.key.urlsafe()
+			boat_dict['self'] = '/boat/' + new_boat.key.urlsafe()
+			self.response.write(json.dumps(boat_dict))
+			self.response.set_status(200)
 
 	def get(self, id = None):
 		if id:
-			boat = ndb.Key(urlsafe = id).get()
+			boat = None
+			try:
+				boat = ndb.Key(urlsafe = id).get()
+			except TypeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+			except ProtocolBufferDecodeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
 			if boat:
 				boat_dict = boat.to_dict()
 				boat_dict['id'] = id
 				boat_dict['self'] = '/boat/' + id
 				self.response.write(json.dumps(boat_dict))
+				self.response.set_status(200)
 		else:
 			all_boats = Boat.query().fetch(1000)
 			boats = []
@@ -46,17 +61,30 @@ class BoatHandler(webapp2.RequestHandler):
 				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
 				boats.append(boat_dict)
 			self.response.write(json.dumps(boats))
+			self.response.set_status(200)
 
 	def delete(self, id = None):
 		if id:
-			boat = ndb.Key(urlsafe = id).get()
-			if not boat.at_sea:
+			boat = None
+			try:
+				boat = ndb.Key(urlsafe = id).get()
+			except TypeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+			except ProtocolBufferDecodeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+			if boat and not boat.at_sea:
 				taken_slip = Slip.query(Slip.current_boat == id).fetch(1)
 				slip = taken_slip[0]
 				slip.current_boat = None
 				slip.arrival_date = None
 				slip.put()
-			boat.key.delete()
+			if boat:
+				boat.key.delete()
+			else:
+				self.response.write('Boat does not exist')
+				self.response.set_status(404)
 		else:
 			boats = Boat.query().fetch(1000)
 			for boat in boats:
@@ -70,7 +98,15 @@ class BoatHandler(webapp2.RequestHandler):
 
 	def patch(self, id = None):
 		if id:
-			boat = ndb.Key(urlsafe = id).get()
+			boat = None
+			try:
+				boat = ndb.Key(urlsafe = id).get()
+			except TypeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+			except ProtocolBufferDecodeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
 			if boat:
 				boat_data = json.loads(self.request.body)
 				if 'name' in boat_data:
@@ -84,6 +120,12 @@ class BoatHandler(webapp2.RequestHandler):
 				boat_dict['id'] = boat.key.urlsafe()
 				boat_dict['self'] = '/boat/' + boat.key.urlsafe()
 				self.response.write(json.dumps(boat_dict))
+			else:
+				self.response.write('Boat does not exist')
+				self.response.set_status(404)
+		else:
+			self.response.write('Boat id not provided')
+			self.response.set_status(400)
 
 class Slip(ndb.Model):
 	number = ndb.IntegerProperty(required = True)
@@ -112,12 +154,21 @@ class SlipHandler(webapp2.RequestHandler):
 
 	def get(self, id = None):
 		if id:
-			slip = ndb.Key(urlsafe = id).get()
+			slip = None
+			try:
+				slip = ndb.Key(urlsafe = id).get()
+			except TypeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+			except ProtocolBufferDecodeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
 			if slip:
 				slip_dict = slip.to_dict()
 				slip_dict['id'] = id
 				slip_dict['self'] = '/slip/' + id
 				self.response.write(json.dumps(slip_dict))
+				self.response.set_status(200)
 		else:
 			all_slips = Slip.query().fetch(1000)
 			slips = []
@@ -127,15 +178,29 @@ class SlipHandler(webapp2.RequestHandler):
 				slip_dict['self'] = '/slip/' + slip.key.urlsafe()
 				slips.append(slip_dict)
 			self.response.write(json.dumps(slips))
+			self.response.set_status(200)
 
 	def delete(self, id = None):
 		if id:
-			slip = ndb.Key(urlsafe = id).get()
-			if slip.current_boat:
+			slip = None
+			try:
+				slip = ndb.Key(urlsafe = id).get()
+			except TypeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+			except ProtocolBufferDecodeError:
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
+			if slip and slip.current_boat:
 				boat = ndb.Key(urlsafe = slip.current_boat).get()
 				boat.at_sea = True
 				boat.put()
-			slip.key.delete()
+			if slip:
+				slip.key.delete()
+			else:
+				self.response.write('Slip does not exist')
+				self.response.set_status(404)
+
 		else:
 			slips = Slip.query().fetch(1000)
 			for slip in slips:
@@ -152,9 +217,11 @@ class DockHandler(webapp2.RequestHandler):
 			try:
 				boat = ndb.Key(urlsafe = id).get()
 			except TypeError:
-				self.response.write('Sorry, only string is allowed as urlsafe input')
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
 			except ProtocolBufferDecodeError:
-				self.response.write('Sorry, the urlsafe string seems to be invalid')
+				self.response.write('Invalid urlsafe string')
+				self.response.set_status(404)
 			if boat and boat.at_sea:
 				open_slip = Slip.query(Slip.current_boat == None).fetch(1)
 				if open_slip:
@@ -180,6 +247,9 @@ class DockHandler(webapp2.RequestHandler):
 				else:
 					self.response.write("No open slips available")
 					self.response.set_status(403)
+			if not boat.at_sea:
+				self.response.write("Boat is already docked")
+				self.response.set_status(400)
 
 	def delete(self, id = None):
 		if id:
@@ -211,6 +281,9 @@ class DockHandler(webapp2.RequestHandler):
 				data.append(slip_dict)
 
 				self.response.write(json.dumps(data))
+			if boat.at_sea:
+				self.response.write("Boat is already at sea")
+				self.response.set_status(400)
 
 allowed_methods = webapp2.WSGIApplication.allowed_methods
 new_allowed_methods = allowed_methods.union(('PATCH',))
